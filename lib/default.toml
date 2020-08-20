@@ -1,0 +1,6 @@
+
+port = 2387
+
+[docker]
+#socketPath = '/var/run/docker.sock'
+timeout = 2000
