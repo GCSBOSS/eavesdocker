@@ -15,6 +15,8 @@ before(async function(){
     this.timeout(10e3);
     docker = new Docker(DEFAULT_CONF.docker);
     await docker.pull('mhart/alpine-node:slim-13');
+    await docker.pull('hello-world');
+    await docker.pull('alpine');
 });
 
 beforeEach(function(){
@@ -64,7 +66,7 @@ describe('Docker', function(){
         this.timeout(10000);
         let c = await startBlab();
         await app.start();
-        await sleep(500);
+        await sleep(1000);
         assert(app.global.lines > 0);
         await app.stop();
         await c.kill();
