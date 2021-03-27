@@ -1,13 +1,20 @@
 const Docker = require('dockerode');
 const assert = require('assert');
+const redis = require('nodecaf-redis');
 
 process.env.NODE_ENV = 'testing';
 
 const init = require('../lib/main');
 
-const DOCKER_URL = process.env.DOCKER_URL || 'http://localhost'
+const DOCKER_URL = process.env.DOCKER_URL || 'localhost'
 const DEFAULT_CONF = { docker: { host: DOCKER_URL, port: 2375 } };
 const MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27017';
+const REDIS_CONF = {
+    host: process.env.REDIS_HOST || 'localhost',
+    type: 'redispub',
+    port: 6379,
+    channel: 'roorar'
+};
 
 let app, docker;
 
@@ -24,16 +31,39 @@ beforeEach(function(){
     app.setup(DEFAULT_CONF);
 });
 
+after(async function(){
+    await docker.pruneContainers();
+})
+
 async function sleep(ms){
     await new Promise(done => setTimeout(done, ms));
 }
+
+let debugLabels = {
+    'com.docker.compose.project': 'foobar',
+    'com.docker.compose.service': 'bazbaz'
+};
 
 async function startBlab(){
     let container = await docker.createContainer({
         Image: 'mhart/alpine-node:slim-13',
         Tty: true,
         Init: true,
+        Labels: debugLabels,
         Cmd: [ 'node', '-e', 'setInterval(() => console.log(Date.now()), 600)' ]
+    });
+    await container.start();
+    return container;
+}
+
+async function startWaitForIt(){
+    let container = await docker.createContainer({
+        Image: 'mhart/alpine-node:slim-13',
+        Tty: true,
+        Init: true,
+        Labels: debugLabels,
+        Cmd: [ 'node', '-e', 'setTimeout(() => process.stdout.write(Buffer.from(\'2834768\\r\\n\')), 2000);' +
+            'setTimeout(Function.prototype, 10000)']
     });
     await container.start();
     return container;
@@ -52,32 +82,165 @@ describe('Startup', function(){
         await assert.rejects(app.start());
     });
 
-    it('Should not fail when transport has unsupported type', async function(){
-        await app.setup({ transports: { bad: {} } });
+});
+
+let debugConfig = { eavesdocker: { tasks: {
+    foobar: { transport: { type: 'emit' }, stack: 'foobar' }
+} } };
+
+
+describe('Tasks', function(){
+
+    it('Should not create tasks without a matching', async function(){
+        await app.setup({ eavesdocker: { tasks: { foobar: { } } } });
         await app.start();
+        assert(!app.global.tasks.foobar);
+        await app.stop();
+    });
+
+    it('Should not create tasks without a \'transport\'', async function(){
+        await app.setup({ eavesdocker: { tasks: { foobar: { services: [ 'foo' ] } } } });
+        await app.start();
+        assert(!app.global.tasks.foobar);
+        await app.restart({ eavesdocker: { tasks: { foobar: {
+            stack: 'foo',
+            transport: { type: 'none' }
+        } } } });
+        assert(!app.global.tasks.foobar);
+        await app.stop();
+    });
+
+    it('Should create defined tasks', async function(){
+        await app.setup(debugConfig);
+        await app.start();
+        assert(app.global.tasks.foobar);
+        await app.stop();
+    });
+
+    it('Should allow referencing globally defined transports', async function(){
+        await app.setup({ eavesdocker: {
+            transports: { ee: { type: 'emit' } },
+            tasks: { foobar: { transport: 'ee', stack: 'foobar' } }
+        } });
+        await app.start();
+        assert(app.global.tasks.foobar);
         await app.stop();
     });
 
 });
 
-describe('Docker', function(){
+describe('Containers & Tasks', function(){
 
-    it('Should read read log entries from previously alive containers', async function(){
-        this.timeout(10000);
-        let c = await startBlab();
+    it('Should not attach containers that don\'t match any task', async function(){
+        this.timeout(8000);
+        await app.setup(debugConfig);
         await app.start();
-        await sleep(1000);
-        assert(app.global.lines > 0);
+        let [ , { id } ] = await docker.run('hello-world');
+        await sleep(2000);
+        assert(!(id in app.global.containers));
+        await app.stop();
+    });
+
+    it('Should attach containers that match at least 1 task', async function(){
+        this.timeout(5000);
+        await app.setup(debugConfig);
+        await app.start();
+        let [ , { id } ] = await docker.run('hello-world', null, null, {
+            Labels: debugLabels
+        });
+        await sleep(500);
+        assert(id in app.global.containers);
+        await app.stop();
+    });
+
+    it('Should attach containers that were running since before', async function(){
+        this.timeout(5000);
+        let c = await startBlab();
+        await app.setup(debugConfig);
+        await app.start();
+        await sleep(500);
+        assert(c.id in app.global.containers);
         await app.stop();
         await c.kill();
     });
 
-    it('Should read read log entries from newly started containers', async function(){
+    it('Should not fail when can\'t attach to some container', async function(){
+        await app.setup(debugConfig);
         await app.start();
-        await docker.run('hello-world');
-        await sleep(500);
-        assert(app.global.lines > 0);
+        let [ , { id } ] = await docker.run('hello-world', null, null, {
+            Labels: debugLabels,
+            HostConfig: {  LogConfig: { type: 'none' } }
+        });
+        await sleep(400);
+        assert(!(id in app.global.containers));
         await app.stop();
+    });
+
+    it('Should forget containers after they die', async function(){
+        this.timeout(8000);
+        await app.setup(debugConfig);
+        await app.start();
+        let [ , { id } ] = await docker.run('hello-world', null, null, {
+            Labels: debugLabels
+        });
+        await sleep(2000);
+        assert(!(id in app.global.containers));
+        await app.stop();
+    });
+
+});
+
+
+describe('Transforms', function(){
+
+    it('Should apply keys to log entry', function(done){
+        this.timeout(8000);
+        let c;
+        let fn = async function(msg){
+            assert.strictEqual(msg.test, 'foo');
+            await app.stop();
+            process.off('eavesdocker', fn);
+            await c.kill();
+            done();
+        }
+        process.on('eavesdocker', fn);
+
+        (async function(){
+            await app.setup({ eavesdocker: { tasks: {
+                foobar: {
+                    transport: { type: 'emit' },
+                    services: [ 'bazbaz' ],
+                    transform: [ { type: 'apply', data: { test: 'foo' } } ]
+                }
+            } } });
+            await app.start();
+            c = await startWaitForIt();
+        })();
+    });
+
+    it('Should wrap log entry in another object', function(done){
+        this.timeout(8000);
+        let c;
+        let fn = async function(msg){
+            assert(msg.final.message);
+            await app.stop();
+            await c.kill();
+            process.off('eavesdocker', fn);
+            done();
+        }
+        process.on('eavesdocker', fn);
+
+        (async function(){
+            await app.setup({ eavesdocker: { tasks: {
+                foobar: {
+                    transport: { type: 'emit' },
+                    services: [ 'bazbaz' ],
+                    transform: [ { type: 'envelope', key: 'final' } ]
+                }
+            } } });
+            await app.start();
+            c = await startWaitForIt();
+        })();
     });
 
 });
@@ -85,29 +248,60 @@ describe('Docker', function(){
 describe('Transports', function(){
 
     it('Should not fail on unknown transport names', async function(){
-        await app.setup({ transports: { tt: { type: 'debug' } } });
+        await app.setup({ eavesdocker: {
+            tasks: { foobar: { transport: 'none', stack: 'foobar' } }
+        } });
         await app.start();
-        await docker.run('alpine', ['echo', 'say what foobar'], null,
-            { Labels: { 'eavesdocker.transports': 'testTp,tt' } });
+        assert(!app.global.tasks.foobar);
         await app.stop();
     });
 
     it('Should insert log entries through mongo transport', async function(){
-        await app.setup({ transports: { testTp: { type: 'mongo', url: MONGO_URL } } });
+        this.timeout(8000);
+        await app.setup({ eavesdocker: { tasks: {
+            foobar: {
+                transport: { type: 'mongo', url: MONGO_URL },
+                services: [ 'bazbaz' ]
+            }
+        } } });
         await app.start();
-        await docker.run('alpine', ['echo', 'say what foobar'], null,
-            { Labels: { 'eavesdocker.transports': 'testTp' } });
-        await sleep(1000);
+        let c = await startWaitForIt();
+        await sleep(5000);
+        await c.kill();
         await app.stop();
 
         const { MongoClient } = require('mongodb');
         const client = new MongoClient(MONGO_URL, { useUnifiedTopology: true });
         await client.connect();
         let db = client.db('Eavesdocker');
-        let r = await db.collection('Log_Entries').find();
-        assert.strictEqual((await r.toArray())[0].message, ' foobar\r\n');
+        let r = await db.collection('Log_Entries').find({});
+        assert.strictEqual((await r.toArray())[0].message, '2834768\r\r\n');
         await db.dropDatabase();
         client.close();
     });
+
+    it('Should publish log entries to redis channel', function(done){
+        this.timeout(8000);
+        let c;
+        (async function(){
+            await app.setup({ eavesdocker: { tasks: {
+                foobar: { transport: REDIS_CONF, services: [ 'bazbaz' ] }
+            } } });
+            await app.start();
+
+            let client = await redis(REDIS_CONF, 'roorar', async function(channel, data){
+                assert.strictEqual(JSON.parse(data).message, '2834768\r\r\n');
+                await sleep(5000);
+                await c.kill();
+                await app.stop();
+                await client.close();
+                done();
+            });
+
+            c = await startWaitForIt();
+        })();
+
+    });
+
 
 });

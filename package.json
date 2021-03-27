@@ -7,13 +7,13 @@
     "coverage": "nyc -r html -r text-summary mocha -b --no-diff --no-warnings test/*.js"
   },
   "dependencies": {
-    "dockerode": "^3.2.1",
     "mongodb": "^3.6.5",
     "nodecaf": "^0.11.5",
     "nodecaf-redis": "0.0.1",
     "toml": "^3.0.0"
   },
   "devDependencies": {
+    "dockerode": "^3.2.1",
     "muhb": "^3.0.4"
   }
 }

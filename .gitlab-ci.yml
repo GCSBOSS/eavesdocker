@@ -31,7 +31,9 @@ unit-test:
   variables:
     DOCKER_URL: http://docker
     MONGO_URL: mongodb://mongo:27017
+    REDIS_HOST: redis
   services:
+    - redis
     - mongo
     - docker:dind
   coverage: '/Statements\s*:\s*(\d+(?:\.\d+)?\%)/'
