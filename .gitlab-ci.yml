@@ -11,6 +11,8 @@ include:
 code_quality:
   artifacts:
     paths: [gl-code-quality-report.json]
+  rules:
+    - if: '$CI_COMMIT_TAG == null'
 
 sast:
   variables:
@@ -20,6 +22,8 @@ sast:
 lint-js:
  image: node
  stage: test
+ rules:
+   - if: '$CI_COMMIT_TAG == null'
  tags:
    - docker
  script:
