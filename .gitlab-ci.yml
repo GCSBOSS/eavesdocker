@@ -29,7 +29,7 @@ lint-js:
 # Performs unit testing.
 unit-test:
   variables:
-    DOCKER_URL: http://docker
+    DOCKER_URL: docker
     MONGO_URL: mongodb://mongo:27017
     REDIS_HOST: redis
   services:

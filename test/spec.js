@@ -218,6 +218,31 @@ describe('Transforms', function(){
         })();
     });
 
+    it('Should add specified info to log entry', function(done){
+        this.timeout(8000);
+        let c;
+        let fn = async function(msg){
+            assert.strictEqual(msg.id, c.id);
+            await app.stop();
+            process.off('eavesdocker', fn);
+            await c.kill();
+            done();
+        }
+        process.on('eavesdocker', fn);
+
+        (async function(){
+            await app.setup({ eavesdocker: { tasks: {
+                foobar: {
+                    transport: { type: 'emit' },
+                    services: [ 'bazbaz' ],
+                    transform: [ { type: 'info', service: true, id: true } ]
+                }
+            } } });
+            await app.start();
+            c = await startWaitForIt();
+        })();
+    });
+
     it('Should wrap log entry in another object', function(done){
         this.timeout(8000);
         let c;
