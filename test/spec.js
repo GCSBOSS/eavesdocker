@@ -47,7 +47,7 @@ let debugLabels = {
 async function startBlab(){
     let container = await docker.createContainer({
         Image: 'mhart/alpine-node:slim-13',
-        Tty: true,
+        Tty: false,
         Init: true,
         Labels: debugLabels,
         Cmd: [ 'node', '-e', 'setInterval(() => console.log(Date.now()), 600)' ]
@@ -59,10 +59,10 @@ async function startBlab(){
 async function startWaitForIt(){
     let container = await docker.createContainer({
         Image: 'mhart/alpine-node:slim-13',
-        Tty: true,
+        Tty: false,
         Init: true,
         Labels: debugLabels,
-        Cmd: [ 'node', '-e', 'setTimeout(() => process.stdout.write(Buffer.from(\'2834768\\r\\n\')), 2000);' +
+        Cmd: [ 'node', '-e', 'setTimeout(() => console.log(\'28234768\'), 2000);' +
             'setTimeout(Function.prototype, 10000)']
     });
     await container.start();
@@ -300,7 +300,7 @@ describe('Transports', function(){
         await client.connect();
         let db = client.db('Eavesdocker');
         let r = await db.collection('Log_Entries').find({});
-        assert.strictEqual((await r.toArray())[0].message, '2834768\r\r\n');
+        assert.strictEqual((await r.toArray())[0].message, '28234768');
         await db.dropDatabase();
         client.close();
     });
@@ -315,7 +315,7 @@ describe('Transports', function(){
             await app.start();
 
             let client = await redis(REDIS_CONF, 'roorar', async function(channel, data){
-                assert.strictEqual(JSON.parse(data).message, '2834768\r\r\n');
+                assert.strictEqual(JSON.parse(data).message, '28234768');
                 await sleep(5000);
                 await c.kill();
                 await app.stop();
