@@ -218,6 +218,31 @@ describe('Transforms', function(){
         })();
     });
 
+    it('Should ensure given key is a datetime', function(done){
+        this.timeout(8000);
+        let c;
+        let fn = async function(msg){
+            assert(msg.foo instanceof Date);
+            await app.stop();
+            process.off('eavesdocker', fn);
+            await c.kill();
+            done();
+        }
+        process.on('eavesdocker', fn);
+
+        (async function(){
+            await app.setup({ eavesdocker: { tasks: {
+                foobar: {
+                    transport: { type: 'emit' },
+                    services: [ 'bazbaz' ],
+                    transform: [ { type: 'time', field: 'foo' } ]
+                }
+            } } });
+            await app.start();
+            c = await startWaitForIt();
+        })();
+    });
+
     it('Should add specified info to log entry', function(done){
         this.timeout(8000);
         let c;
