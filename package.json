@@ -10,7 +10,8 @@
     "mongodb": "^3.6.5",
     "nodecaf": "^0.11.5",
     "nodecaf-redis": "0.0.1",
-    "toml": "^3.0.0"
+    "toml": "^3.0.0",
+    "uuid": "^8.3.2"
   },
   "devDependencies": {
     "dockerode": "^3.2.1",
