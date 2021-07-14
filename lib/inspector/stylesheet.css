@@ -129,7 +129,7 @@ main {
 /* Main View */
 
 [data-name=main] {
-    grid-template-columns: 280px 1fr auto;
+    grid-template-columns: 260px 1fr auto;
     grid-template-rows: 1fr;
 }
 
@@ -207,7 +207,6 @@ main {
 [data-name=main] > #toolbar {
     grid-column: 1;
     padding: 84px 12px 12px 12px;
-    /*border-right: 1px solid #eee;*/
     display: flex;
     flex-direction: column;
     z-index: 1;
@@ -224,7 +223,7 @@ main {
 
 [data-name=main] > #containers {
     grid-column: 3;
-    padding: 12px 32px;
+    padding: 12px 0;
     z-index: 1;
     box-shadow: 0 6px 10px 0 rgba(0,0,0,0.14), 0 1px 18px 0 rgba(0,0,0,0.12), 0 3px 5px -1px rgba(0,0,0,0.20);
 }
@@ -233,8 +232,8 @@ main {
     display: flex;
     align-items: center;
     position: relative;
+    padding: 0 17px;
     cursor: pointer;
-    margin-left: -10px;
 }
 
 [data-name=main] > #containers > h2::before {
@@ -256,9 +255,7 @@ main {
 [data-name=main] > #containers > article {
     display: grid;
     grid-gap: 6px;
-    padding: 12px;
-    padding-left: 24px;
-    margin-left: -12px;
+    padding: 8px 24px;
     grid-template-columns: auto 1fr;
     cursor: pointer;
     min-width: 160px;
@@ -393,13 +390,18 @@ main {
     padding: 8px;
 }
 
-[data-name=main] > #lists .settings > header {   
-    padding-bottom: 12px;
+[data-name=main] > #lists .settings > header {
 }
 
 [data-name=main] > #lists .settings form.service {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
+    padding: 8px;
+}
+
+[data-name=main] > #lists .settings form > p {
+    width: 100%;
 }
 
 [data-name=main] > #lists .settings .service > label {
