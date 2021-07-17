@@ -1,6 +1,6 @@
 {
   "name": "eavesdocker",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "main": "lib/main.js",
   "scripts": {
     "test": "mocha -b --no-diff test/*.js",

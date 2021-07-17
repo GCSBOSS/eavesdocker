@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.1.4] - 2021-07-17
+
+### Added
+- GUI: setting to hide specific fields on all log entries in a list
+
+### Fixed
+- GUI: bad spacing on no container message
+- GUI: bug trying to parse JSON when something starts with curly-braces
+- GUI: listener leak when deleting lists
+
 ## [v0.1.3] - 2021-07-14
 
 ### Added
@@ -48,3 +58,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 [v0.1.0]: https://gitlab.com/GCSBOSS/eavesdocker/-/tags/v0.1.0
 [v0.1.1]: https://gitlab.com/GCSBOSS/eavesdocker/-/tags/v0.1.1
 [v0.1.2]: https://gitlab.com/GCSBOSS/eavesdocker/-/tags/v0.1.2
+[v0.1.3]: https://gitlab.com/GCSBOSS/eavesdocker/-/tags/v0.1.3
+[v0.1.4]: https://gitlab.com/GCSBOSS/eavesdocker/-/tags/v0.1.4
