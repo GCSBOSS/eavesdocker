@@ -394,17 +394,61 @@ main {
     padding: 8px;
 }
 
+/* Settings Header */
+
 [data-name=main] > #lists .settings > header {
+    margin-bottom: 16px;
 }
 
-[data-name=main] > #lists .settings form.service {
+[data-name=main] > #lists .settings > header > button {
+    box-shadow: none;
+    background: transparent;
+    border-radius: 0;
+    border-bottom: 2px solid transparent;
+}
+
+[data-name=main] > #lists .settings > header > button[data-open] {
+    border-bottom-color: #1976d2;
+}
+
+[data-name=main] > #lists .settings fieldset {
+    border: none;
+    padding: 12px 8px;
+    margin: 0;
+}
+
+[data-name=main] > #lists .settings fieldset > label {
+    font-weight: 600;
+    display: block;
+}
+
+[data-name=main] > #lists .settings label + fieldset {
+    padding: 10px 0;
+    max-height: 160px;
+    overflow: auto;
     display: flex;
-    gap: 8px;
     flex-wrap: wrap;
-    padding: 8px;
+    align-content: start;
+    border-bottom: 1px solid #aaa;
+    box-sizing: border-box;
+    gap: 8px;
 }
 
-[data-name=main] > #lists .settings form > p {
+[data-name=main] > #lists .settings fieldset.focus > label {
+    display: inline-flex;
+    align-items: center;
+    cursor: pointer;
+    font-weight: 400;
+}
+
+[data-name=main] > #lists .settings fieldset.focus > label::before {
+
+margin-right: 4px;
+
+font-size: 22px;
+}
+
+[data-name=main] > #lists .settings p {
     width: 100%;
 }
 
