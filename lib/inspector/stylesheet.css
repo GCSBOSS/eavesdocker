@@ -191,16 +191,6 @@ main {
 }
 
 /* Main View Header */
-/*
-[data-name=main] > header {
-    grid-column: 2;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    padding-left: 24px;
-    border-bottom: 1px solid #eee;
-    gap: 8px;
-}*/
 
 /* ToolBar */
 
@@ -392,7 +382,7 @@ main {
     cursor: text;
     display: flex;
     align-items: center;
-    transition: all 300ms ease;
+    transition: all 200ms ease;
     clip-path: inset(0 100% 0 0);
 }
 
