@@ -529,11 +529,11 @@ main {
     scroll-behavior: smooth;
 }
 
-[data-name=main] > #lists > article > section::-webkit-scrollbar {
+::-webkit-scrollbar {
     background-color: transparent;
     width: 2px; height: 2px;
 }
-[data-name=main] > #lists > article > section::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
     background-color: #0007;
 }
 
@@ -627,9 +627,18 @@ main {
     text-transform: capitalize;
 }
 
-[data-name=main] > #lists pre {
-    white-space: pre-wrap;
+[data-name=main] > #lists code.bool {
+    color: blue;
+}
+
+[data-name=main] > #lists pre.object {
     line-height: 1.6;
     padding: 8px;
     margin: 0;
+    max-height: 200px;
+    overflow: auto;
+    background: #f6f6f6;
+    white-space: pre;
+    margin-bottom: 12px;
+    margin-top: 6px;
 }
