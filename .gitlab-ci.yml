@@ -36,10 +36,12 @@ unit-test:
     DOCKER_URL: docker
     MONGO_URL: mongodb://mongo:27017
     REDIS_HOST: redis
+    MC_HOST: stpaquet-alpinemailcatcher
   services:
     - redis
     - mongo
     - docker:dind
+    - stpaquet/alpinemailcatcher
   coverage: '/Statements\s*:\s*(\d+(?:\.\d+)?\%)/'
   image: registry.gitlab.com/gcsboss/docker-mocha-nyc:0.1.0-alpine
   stage: test
