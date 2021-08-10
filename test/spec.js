@@ -2,6 +2,7 @@ const Docker = require('dockerode');
 const assert = require('assert');
 const redis = require('nodecaf-redis');
 const muhb = require('muhb');
+const http = require('http');
 
 process.env.NODE_ENV = 'testing';
 
@@ -385,5 +386,36 @@ describe('Transports', function(){
         assert.strictEqual(obj.length, 1);
     });
 
+    it('Should run an http request', async function(){
+        this.timeout(8000);
+
+        let gotUrl, gotBody = '';
+
+        const s = http.createServer((req, res) => {
+            gotUrl = req.url;
+
+            req.setEncoding('utf-8');
+            req.on('data', buf => gotBody += buf);
+            res.end();
+        }).listen(8765);
+
+        await app.setup({ eavesdocker: { tasks: {
+            foobar: {
+                transport: { type: 'webhook', url: 'http://localhost:8765/test' },
+                services: [ 'bazbaz' ]
+            }
+        } } });
+
+        await app.start();
+        const c = await startWaitForIt();
+        await sleep(5000);
+        await c.kill();
+        await app.stop();
+
+        JSON.parse(gotBody);
+        assert.strictEqual(gotUrl, '/test');
+
+        s.close();
+    });
 
 });
