@@ -1,6 +1,8 @@
 const Docker = require('dockerode');
 const assert = require('assert');
 const redis = require('nodecaf-redis');
+const muhb = require('muhb');
+const http = require('http');
 
 process.env.NODE_ENV = 'testing';
 
@@ -14,6 +16,14 @@ const REDIS_CONF = {
     type: 'redispub',
     port: 6379,
     channel: 'roorar'
+};
+
+const MC_HOST = 'http://' + (process.env.MC_HOST || 'localhost') + ':1080';
+const SMTP_CONF = {
+    host: process.env.MC_HOST || 'localhost',
+    port: 1025,
+    to: 'jubi@ju.ju',
+    pool: true
 };
 
 let app, docker;
@@ -39,13 +49,13 @@ async function sleep(ms){
     await new Promise(done => setTimeout(done, ms));
 }
 
-let debugLabels = {
+const debugLabels = {
     'com.docker.compose.project': 'foobar',
     'com.docker.compose.service': 'bazbaz'
 };
 
 async function startBlab(){
-    let container = await docker.createContainer({
+    const container = await docker.createContainer({
         Image: 'mhart/alpine-node:slim-13',
         Tty: false,
         Init: true,
@@ -57,7 +67,7 @@ async function startBlab(){
 }
 
 async function startWaitForIt(){
-    let container = await docker.createContainer({
+    const container = await docker.createContainer({
         Image: 'mhart/alpine-node:slim-13',
         Tty: false,
         Init: true,
@@ -84,7 +94,7 @@ describe('Startup', function(){
 
 });
 
-let debugConfig = { eavesdocker: { tasks: {
+const debugConfig = { eavesdocker: { tasks: {
     foobar: { transport: { type: 'emit' }, stack: 'foobar' }
 } } };
 
@@ -135,7 +145,7 @@ describe('Containers & Tasks', function(){
         this.timeout(8000);
         await app.setup(debugConfig);
         await app.start();
-        let [ , { id } ] = await docker.run('hello-world');
+        const [ , { id } ] = await docker.run('hello-world');
         await sleep(2000);
         assert(!(id in app.global.containers));
         await app.stop();
@@ -145,7 +155,7 @@ describe('Containers & Tasks', function(){
         this.timeout(5000);
         await app.setup(debugConfig);
         await app.start();
-        let [ , { id } ] = await docker.run('hello-world', null, null, {
+        const [ , { id } ] = await docker.run('hello-world', null, null, {
             Labels: debugLabels
         });
         await sleep(500);
@@ -155,7 +165,7 @@ describe('Containers & Tasks', function(){
 
     it('Should attach containers that were running since before', async function(){
         this.timeout(5000);
-        let c = await startBlab();
+        const c = await startBlab();
         await app.setup(debugConfig);
         await app.start();
         await sleep(500);
@@ -167,7 +177,7 @@ describe('Containers & Tasks', function(){
     it('Should not fail when can\'t attach to some container', async function(){
         await app.setup(debugConfig);
         await app.start();
-        let [ , { id } ] = await docker.run('hello-world', null, null, {
+        const [ , { id } ] = await docker.run('hello-world', null, null, {
             Labels: debugLabels,
             HostConfig: {  LogConfig: { type: 'none' } }
         });
@@ -180,7 +190,7 @@ describe('Containers & Tasks', function(){
         this.timeout(8000);
         await app.setup(debugConfig);
         await app.start();
-        let [ , { id } ] = await docker.run('hello-world', null, null, {
+        const [ , { id } ] = await docker.run('hello-world', null, null, {
             Labels: debugLabels
         });
         await sleep(2000);
@@ -196,7 +206,7 @@ describe('Transforms', function(){
     it('Should apply keys to log entry', function(done){
         this.timeout(8000);
         let c;
-        let fn = async function(msg){
+        const fn = async function(msg){
             assert.strictEqual(msg.test, 'foo');
             await app.stop();
             process.off('eavesdocker', fn);
@@ -221,7 +231,7 @@ describe('Transforms', function(){
     it('Should ensure given key is a datetime', function(done){
         this.timeout(8000);
         let c;
-        let fn = async function(msg){
+        const fn = async function(msg){
             assert(msg.foo instanceof Date);
             await app.stop();
             process.off('eavesdocker', fn);
@@ -246,7 +256,7 @@ describe('Transforms', function(){
     it('Should add specified info to log entry', function(done){
         this.timeout(8000);
         let c;
-        let fn = async function(msg){
+        const fn = async function(msg){
             assert.strictEqual(msg.id, c.id);
             await app.stop();
             process.off('eavesdocker', fn);
@@ -271,7 +281,7 @@ describe('Transforms', function(){
     it('Should wrap log entry in another object', function(done){
         this.timeout(8000);
         let c;
-        let fn = async function(msg){
+        const fn = async function(msg){
             assert(msg.final.message);
             await app.stop();
             await c.kill();
@@ -315,7 +325,7 @@ describe('Transports', function(){
             }
         } } });
         await app.start();
-        let c = await startWaitForIt();
+        const c = await startWaitForIt();
         await sleep(5000);
         await c.kill();
         await app.stop();
@@ -323,8 +333,8 @@ describe('Transports', function(){
         const { MongoClient } = require('mongodb');
         const client = new MongoClient(MONGO_URL, { useUnifiedTopology: true });
         await client.connect();
-        let db = client.db('Eavesdocker');
-        let r = await db.collection('Log_Entries').find({});
+        const db = client.db('Eavesdocker');
+        const r = await db.collection('Log_Entries').find({});
         assert.strictEqual((await r.toArray())[0].message, '28234768');
         await db.dropDatabase();
         client.close();
@@ -339,7 +349,7 @@ describe('Transports', function(){
             } } });
             await app.start();
 
-            let client = await redis(REDIS_CONF, 'roorar', async function(channel, data){
+            const client = await redis(REDIS_CONF, 'roorar', async function(_c, data){
                 assert.strictEqual(JSON.parse(data).message, '28234768');
                 await sleep(5000);
                 await c.kill();
@@ -353,5 +363,59 @@ describe('Transports', function(){
 
     });
 
+    it('Should send an e-mail', async function(){
+        this.timeout(8000);
+
+        await muhb.delete(MC_HOST + '/messages');
+
+        await app.setup({ eavesdocker: { tasks: {
+            foobar: {
+                transport: { type: 'email', ...SMTP_CONF },
+                services: [ 'bazbaz' ]
+            }
+        } } });
+
+        await app.start();
+        const c = await startWaitForIt();
+        await sleep(5000);
+        await c.kill();
+        await app.stop();
+
+        const { body } = await muhb.get(MC_HOST + '/messages');
+        const obj = JSON.parse(body);
+        assert.strictEqual(obj.length, 1);
+    });
+
+    it('Should run an http request', async function(){
+        this.timeout(8000);
+
+        let gotUrl, gotBody = '';
+
+        const s = http.createServer((req, res) => {
+            gotUrl = req.url;
+
+            req.setEncoding('utf-8');
+            req.on('data', buf => gotBody += buf);
+            res.end();
+        }).listen(8765);
+
+        await app.setup({ eavesdocker: { tasks: {
+            foobar: {
+                transport: { type: 'webhook', url: 'http://localhost:8765/test' },
+                services: [ 'bazbaz' ]
+            }
+        } } });
+
+        await app.start();
+        const c = await startWaitForIt();
+        await sleep(5000);
+        await c.kill();
+        await app.stop();
+
+        JSON.parse(gotBody);
+        assert.strictEqual(gotUrl, '/test');
+
+        s.close();
+    });
 
 });
