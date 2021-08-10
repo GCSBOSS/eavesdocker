@@ -26,6 +26,12 @@ const SMTP_CONF = {
     pool: true
 };
 
+const GITLAB_CONF = {
+    project: 23489,
+    token: 'bar',
+    url: 'http://localhost:12345'
+};
+
 let app, docker;
 
 before(async function(){
@@ -416,6 +422,47 @@ describe('Transports', function(){
         assert.strictEqual(gotUrl, '/test');
 
         s.close();
+    });
+
+    it('Should crate a gitlab issue', async function(){
+        this.timeout(8000);
+
+        let gotIt;
+
+        const Nodecaf = require('nodecaf');
+        const fakeGl = new Nodecaf({ conf: { port: 12345 }, api: function({ post }){
+
+            post('/projects/:id/issues', ({ params, headers, body, res }) => {
+                assert.strictEqual(params.id, '23489');
+                assert.strictEqual(headers['private-token'], 'bar');
+                assert.strictEqual(params.id, '23489');
+                JSON.parse(body.toString());
+                gotIt = true;
+                res.end();
+            });
+
+        } });
+
+        await fakeGl.start();
+
+        // TODO test with label field
+
+        await app.setup({ eavesdocker: { tasks: {
+            foobar: {
+                transport: { type: 'gitlab', ...GITLAB_CONF },
+                services: [ 'bazbaz' ]
+            }
+        } } });
+
+        await app.start();
+        const c = await startWaitForIt();
+        await sleep(5000);
+        await c.kill();
+        await app.stop();
+
+        await fakeGl.stop();
+
+        assert(gotIt);
     });
 
 });
