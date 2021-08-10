@@ -1,6 +1,7 @@
 stages:
   - test
-  - deploy
+  - build
+  - publish
 
 include:
   - template: Dependency-Scanning.gitlab-ci.yml
@@ -53,9 +54,25 @@ unit-test:
     - npm i .
     - npm run coverage
 
+build:
+  image: docker:latest
+  stage: build
+  services:
+    - docker:dind
+  only:
+    refs:
+      - /^v\d+\.\d+\.\d+/
+  before_script:
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD"
+  script:
+    - docker build --pull -t "gcsboss/$CI_PROJECT_NAME:${CI_COMMIT_TAG:1}" .
+    - docker build --pull -t "gcsboss/$CI_PROJECT_NAME" .
+    - docker push "gcsboss/$CI_PROJECT_NAME:${CI_COMMIT_TAG:1}"
+    - docker push "gcsboss/$CI_PROJECT_NAME"
+
 # Publish package to NPM.
 publish:
-  stage: deploy
+  stage: publish
   image: node
   tags:
     - docker
